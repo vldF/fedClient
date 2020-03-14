@@ -26,9 +26,7 @@ class Chat {
             val messageText = "[${message.senderNick}]: ${message.message}\n"
             val currentMessageHeight = max(1, ceil(messageText.length * 1.0 / width).toInt())
 
-            if (offset > linesCount) {
-                //
-            } else if (linesCount > offset && linesCount + currentMessageHeight <= height + offset) {
+            if (linesCount > offset && linesCount + currentMessageHeight <= height + offset) {
                 result.append(messageText)
             } else if (linesCount > offset && linesCount + currentMessageHeight >= height + offset) {
                 val needToAdd = offset + height - linesCount

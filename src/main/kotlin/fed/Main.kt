@@ -9,11 +9,16 @@ import com.googlecode.lanterna.screen.TerminalScreen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.terminal.Terminal
 import fed.api.Api
+import org.kohsuke.args4j.CmdLineException
+import org.kohsuke.args4j.CmdLineParser
+import org.kohsuke.args4j.Option
 import java.io.File
+import java.io.FileNotFoundException
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.system.exitProcess
 
 
-class Main {
+class Main(vararg args: String) {
     private val terminal: Terminal = DefaultTerminalFactory().createTerminal()
     private val screen = TerminalScreen(terminal)
     private val window = BasicWindow()
@@ -23,12 +28,66 @@ class Main {
     private var maxColumns = terminal.terminalSize.columns
     private var maxRows = terminal.terminalSize.rows
     private var chatOffset = 0
-    private lateinit var api: Api
+    private var api: Api
     private var lastAddedChatTextLen = 0
+    private var nick: String
+    private var token: String
 
-    private lateinit var token: String
-    private lateinit var nick: String
-    private var chatWith = 2
+    private var isClosed = false
+
+    @Option(name = "--with", aliases = ["-w"], usage = withParameterDescriptor, required=true)
+    private var withParameter: String = ""
+    private var userInChatId = -1
+
+    @Option(name="--user", aliases = ["-u"], usage = userParameterDescriptor)
+    private var userName = ""
+
+    init {
+        val parser = CmdLineParser(this)
+        try {
+            parser.parseArgument(*args)
+        } catch (e: CmdLineException) {
+            System.err.println("No argument passed:\n--with parameter is empty")
+            exitProcess(1)
+        }
+
+        // loading config
+        if(userName.isEmpty()) {
+            userName = File("users").listFiles()?.first()?.nameWithoutExtension ?: ""
+            if (userName.isEmpty()) {
+                System.err.println("U haven't any accounts. Create new using --user NAME flag")
+                exitProcess(1)
+            }
+        }
+
+        val config: List<String> =
+        try {
+            val configFile = File("users\\$userName")
+            configFile.readLines()
+        } catch (_: FileNotFoundException) {
+            // user set username, but account doesn't exist. Trying to register new
+            val localApi = Api(userName, "")
+            val resp = localApi.register()
+            if (resp["status"].asString == "error") {
+                System.err.println("Error. May be this username already in use")
+                exitProcess(1)
+            } else {
+                val token = resp["token"].asString
+                File("users\\$userName").createNewFile()
+                val configFile = File("users\\$userName")
+                configFile.writeText("$token\n")
+                configFile.writeText(userName)
+
+                configFile.readLines()
+            }
+        }
+
+        token = config[0]
+        nick = config[1]
+
+        api = Api(nick, token)
+        userInChatId = api.getUserId(withParameter)
+    }
 
     fun main() {
         screen.startScreen()
@@ -41,40 +100,28 @@ class Main {
         messageCheckerDaemon()
         window.addWindowListener(keyListener)
         textGUI.addWindowAndWait(window)
+        isClosed = true
     }
 
     private fun messageCheckerDaemon() {
         val chat = Chat()
-        val configFile = File("fedConfig").readLines()
+        var chatText: String
         var oldOffset = chatOffset
         var oldMaxColumns = maxColumns
         var oldMaxRows = maxRows
-
-        token = configFile[0]
-        nick = configFile[1]
+        val messagePanel = Panel()
 
         api = Api(nick, token)
-
-        val messagePanel = Panel()
         panel.addComponent(messagePanel)
 
-        val messages = api.getAllMessages(chatWith)
-        for (m in messages) {
-            chat.add(m)
-        }
-        var chatText = chat.getText(maxColumns, maxRows, chatOffset - 1)
-        lastAddedChatTextLen = chatText.lines().size
-        messagePanel.addComponent(Label(chatText))
-
         Thread(Runnable {
-            while (true) {
+            while (!isClosed) {
                 Thread.sleep(100)
                 val newMessages = api.getLastMessages(
-                    chatWith,
+                    userInChatId,
                     if (chat.size != 0)
                         chat.lastTime
-                    else
-                        0
+                    else 0
                 )
 
                 // checking for messages count (empty or not) and window size and chat offset didn't changed
@@ -102,7 +149,7 @@ class Main {
         override fun onInput(basePane: Window?, keyStroke: KeyStroke?, deliverEvent: AtomicBoolean?) {
             when (keyStroke?.keyType ?: return) {
                 KeyType.Enter -> {
-                    api.messageSend(chatWith, input.text)
+                    api.messageSend(userInChatId, input.text)
                     input.text = ""
                 }
                 KeyType.ArrowUp -> if (chatOffset > 0) chatOffset--
@@ -131,7 +178,6 @@ class Main {
 }
 
 
-fun main() {
-    val m = Main()
-    m.main()
+fun main(args: Array<out String>) {
+    Main(*args).main()
 }
