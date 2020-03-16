@@ -10,7 +10,7 @@ import java.lang.Exception
 import java.util.concurrent.TimeUnit
 
 class Api(private val nickname: String, private val token: String) {
-    private val baseUrl = "http://localhost:35309/"
+    private val baseUrl = "http://192.168.0.200:35309/"
     private val client = OkHttpClient()
     private var userId = -1
     private val messagesType = object: TypeToken<List<Message>>() {}.type
@@ -40,15 +40,8 @@ class Api(private val nickname: String, private val token: String) {
         } catch (e: Exception) {
             println(resp)
             println("$baseUrl$method?$paramsString&token=$token")
-            throw e.fillInStackTrace() // todo
+            throw e
         }
-    }
-
-    fun getAllMessages(fromUserId: Int): List<Message> {
-        return Gson().fromJson(execute("messages.get", mapOf(
-            "userid" to userId,
-            "by" to fromUserId
-        ))["data"].asJsonArray, messagesType)
     }
 
     fun getLastMessages(fromId: Int, time: Long): List<Message> {

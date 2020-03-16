@@ -14,12 +14,16 @@ import org.kohsuke.args4j.CmdLineParser
 import org.kohsuke.args4j.Option
 import java.io.File
 import java.io.FileNotFoundException
+import java.net.ConnectException
+import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
 
 class Main(vararg args: String) {
-    private val terminal: Terminal = DefaultTerminalFactory().createTerminal()
+    private val terminal: Terminal = DefaultTerminalFactory(System.out, System.`in`, Charset.forName("UTF-8"))
+        //.setForceTextTerminal(true)
+        .createTerminal()
     private val screen = TerminalScreen(terminal)
     private val window = BasicWindow()
     private val panel = Panel(LinearLayout(Direction.VERTICAL))
@@ -62,7 +66,7 @@ class Main(vararg args: String) {
 
         val config: List<String> =
         try {
-            val configFile = File("users\\$userName")
+            val configFile = File("users/$userName")
             configFile.readLines()
         } catch (_: FileNotFoundException) {
             // user set username, but account doesn't exist. Trying to register new
@@ -73,8 +77,8 @@ class Main(vararg args: String) {
                 exitProcess(1)
             } else {
                 val token = resp["token"].asString
-                File("users\\$userName").createNewFile()
-                val configFile = File("users\\$userName")
+                File("users/$userName").createNewFile()
+                val configFile = File("users/$userName")
                 configFile.writeText("$token\n")
                 configFile.writeText(userName)
 
@@ -85,22 +89,30 @@ class Main(vararg args: String) {
         token = config[0]
         nick = config[1]
 
-        api = Api(nick, token)
+        try {
+            api = Api(nick, token)
+        }catch (_: ConnectException) {
+            System.err.println("Connection error. Please, check your internet connection")
+            exitProcess(1)
+        }
         userInChatId = api.getUserId(withParameter)
     }
 
     fun main() {
-        screen.startScreen()
-        window.component = panel
-        window.setHints(listOf(Window.Hint.FULL_SCREEN))
-        panel.addComponent(input)
+        try {
+            screen.startScreen()
+            window.component = panel
+            window.setHints(listOf(Window.Hint.FULL_SCREEN))
+            panel.addComponent(input)
 
-        val textGUI = MultiWindowTextGUI(screen)
-        input.takeFocus()
-        messageCheckerDaemon()
-        window.addWindowListener(keyListener)
-        textGUI.addWindowAndWait(window)
-        isClosed = true
+            val textGUI = MultiWindowTextGUI(screen)
+            input.takeFocus()
+            messageCheckerDaemon()
+            window.addWindowListener(keyListener)
+            textGUI.addWindowAndWait(window)
+        } finally {
+            isClosed = true
+        }
     }
 
     private fun messageCheckerDaemon() {
