@@ -216,5 +216,7 @@ class Main(vararg args: String) {
 fun main(args: Array<out String>) {
     try{
         Main(*args).main()
-    } catch (_: ChatBaseException) {}
+    } catch (_: ChatBaseException) {
+        exitProcess(1)
+    }
 }
