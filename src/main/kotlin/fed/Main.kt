@@ -9,6 +9,10 @@ import com.googlecode.lanterna.screen.TerminalScreen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.terminal.Terminal
 import fed.api.Api
+import fed.exceptions.AccountErrorException
+import fed.exceptions.ChatBaseException
+import fed.exceptions.InternetConnectionException
+import fed.exceptions.WrongArgumentException
 import org.kohsuke.args4j.CmdLineException
 import org.kohsuke.args4j.CmdLineParser
 import org.kohsuke.args4j.Option
@@ -27,7 +31,7 @@ class Main(vararg args: String) {
     private val screen = TerminalScreen(terminal)
     private val window = BasicWindow()
     private val panel = Panel(LinearLayout(Direction.VERTICAL))
-    private val input = TextBox(TerminalSize(terminal.terminalSize.rows, 1))
+    private lateinit var input: TextBox
 
     private var maxColumns = terminal.terminalSize.columns
     private var maxRows = terminal.terminalSize.rows
@@ -52,15 +56,15 @@ class Main(vararg args: String) {
             parser.parseArgument(*args)
         } catch (e: CmdLineException) {
             System.err.println("No argument passed:\n--with parameter is empty")
-            exitProcess(1)
+            throw WrongArgumentException()
         }
 
         // loading config
         if(userName.isEmpty()) {
             userName = File("users").listFiles()?.first()?.nameWithoutExtension ?: ""
             if (userName.isEmpty()) {
-                System.err.println("U haven't any accounts. Create new using --user NAME flag")
-                exitProcess(1)
+                System.err.println("You haven't any accounts. Create new using --user NAME flag")
+                throw AccountErrorException()
             }
         }
 
@@ -70,17 +74,21 @@ class Main(vararg args: String) {
             configFile.readLines()
         } catch (_: FileNotFoundException) {
             // user set username, but account doesn't exist. Trying to register new
-            val localApi = Api(userName, "")
+            val localApi = try {
+                 Api(userName, "")
+            } catch (_: ConnectException) {
+                System.err.println("Please, check your internet connection")
+                throw InternetConnectionException()
+            }
             val resp = localApi.register()
             if (resp["status"].asString == "error") {
                 System.err.println("Error. May be this username already in use")
-                exitProcess(1)
+                throw AccountErrorException()
             } else {
                 val token = resp["token"].asString
                 File("users/$userName").createNewFile()
                 val configFile = File("users/$userName")
-                configFile.writeText("$token\n")
-                configFile.writeText(userName)
+                configFile.writeText("$token\n$userName")
 
                 configFile.readLines()
             }
@@ -93,7 +101,7 @@ class Main(vararg args: String) {
             api = Api(nick, token)
         }catch (_: ConnectException) {
             System.err.println("Connection error. Please, check your internet connection")
-            exitProcess(1)
+            throw InternetConnectionException()
         }
         userInChatId = api.getUserId(withParameter)
     }
@@ -103,6 +111,9 @@ class Main(vararg args: String) {
             screen.startScreen()
             window.component = panel
             window.setHints(listOf(Window.Hint.FULL_SCREEN))
+
+            input = TextBox(TerminalSize(screen.terminalSize.columns, 1))
+
             panel.addComponent(input)
 
             val textGUI = MultiWindowTextGUI(screen)
@@ -129,12 +140,17 @@ class Main(vararg args: String) {
         Thread(Runnable {
             while (!isClosed) {
                 Thread.sleep(100)
-                val newMessages = api.getLastMessages(
-                    userInChatId,
-                    if (chat.size != 0)
-                        chat.lastTime
-                    else 0
-                )
+                val newMessages = try{
+                    api.getLastMessages(
+                        userInChatId,
+                        if (chat.size != 0)
+                            chat.lastTime
+                        else 0
+                    )
+                } catch (_: ConnectException) {
+                    System.err.println("Connection trouble")
+                    throw InternetConnectionException()
+                }
 
                 // checking for messages count (empty or not) and window size and chat offset didn't changed
                 if (
@@ -161,7 +177,12 @@ class Main(vararg args: String) {
         override fun onInput(basePane: Window?, keyStroke: KeyStroke?, deliverEvent: AtomicBoolean?) {
             when (keyStroke?.keyType ?: return) {
                 KeyType.Enter -> {
-                    api.messageSend(userInChatId, input.text)
+                    try {
+                        api.messageSend(userInChatId, input.text)
+                    } catch (_: ConnectException) {
+                        System.err.println("Error on sending message")
+                        throw InternetConnectionException()
+                    }
                     input.text = ""
                 }
                 KeyType.ArrowUp -> if (chatOffset > 0) chatOffset--
@@ -185,11 +206,15 @@ class Main(vararg args: String) {
         override fun onUnhandledInput(basePane: Window?, keyStroke: KeyStroke?, hasBeenHandled: AtomicBoolean?) {
             return
         }
-
     }
+
+    // this method used in tests
+    internal fun checkDataIsCorrect(): Boolean = nick.isNotEmpty() && token.isNotEmpty() && userInChatId != -1
 }
 
 
 fun main(args: Array<out String>) {
-    Main(*args).main()
+    try{
+        Main(*args).main()
+    } catch (_: ChatBaseException) {}
 }

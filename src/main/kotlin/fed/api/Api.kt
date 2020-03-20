@@ -6,13 +6,14 @@ import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.squareup.okhttp.OkHttpClient
 import com.squareup.okhttp.Request
+import fed.exceptions.AccountErrorException
 import java.lang.Exception
 import java.util.concurrent.TimeUnit
 
 class Api(private val nickname: String, private val token: String) {
-    private val baseUrl = "http://192.168.0.200:35309/"
+    private val baseUrl = "http://localhost:35309/"
     private val client = OkHttpClient()
-    private var userId = -1
+    var userId = -1
     private val messagesType = object: TypeToken<List<Message>>() {}.type
 
     init {
@@ -53,7 +54,7 @@ class Api(private val nickname: String, private val token: String) {
     }
 
     fun messageSend(toId: Int, msg: String): JsonObject {
-        return execute("message.send", mapOf(
+        return execute("messages.send", mapOf(
             "sender" to userId,
             "receiver" to toId,
             "message" to msg,
@@ -71,6 +72,6 @@ class Api(private val nickname: String, private val token: String) {
         return execute("users.getUserId", mapOf(
             "nick" to nick,
             "userid" to userId
-        ))["id"].asInt
+        ))["id"]?.asInt ?: throw AccountErrorException()
     }
 }
