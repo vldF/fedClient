@@ -23,7 +23,10 @@ import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.system.exitProcess
 
-
+/**
+ * Main class of chat.
+ * @param args: args from command line.
+ */
 class Main(vararg args: String) {
     private val terminal: Terminal = DefaultTerminalFactory(System.out, System.`in`, Charset.forName("UTF-8"))
         //.setForceTextTerminal(true)
@@ -61,6 +64,7 @@ class Main(vararg args: String) {
 
         // loading config
         if(userName.isEmpty()) {
+            // trying to get first name from saved files
             userName = File("users").listFiles()?.first()?.nameWithoutExtension ?: ""
             if (userName.isEmpty()) {
                 System.err.println("You haven't any accounts. Create new using --user NAME flag")
@@ -73,7 +77,7 @@ class Main(vararg args: String) {
             val configFile = File("users/$userName")
             configFile.readLines()
         } catch (_: FileNotFoundException) {
-            // user set username, but account doesn't exist. Trying to register new
+            // user set username, but account doesn't exist. Trying to register new account on the server
             val localApi = try {
                  Api(userName, "")
             } catch (_: ConnectException) {
@@ -82,7 +86,7 @@ class Main(vararg args: String) {
             }
             val resp = localApi.register()
             if (resp["status"].asString == "error") {
-                System.err.println("Error. May be this username already in use")
+                System.err.println("Error. This username already exist")
                 throw AccountErrorException()
             } else {
                 val token = resp["token"].asString
@@ -106,8 +110,10 @@ class Main(vararg args: String) {
         userInChatId = api.getUserId(withParameter)
     }
 
+
     fun main() {
         try {
+            // preparing terminal screen
             screen.startScreen()
             window.component = panel
             window.setHints(listOf(Window.Hint.FULL_SCREEN))
@@ -118,13 +124,18 @@ class Main(vararg args: String) {
 
             val textGUI = MultiWindowTextGUI(screen)
             input.takeFocus()
+
+            // starting background thread, that will check messages for new
             messageCheckerDaemon()
+
             window.addWindowListener(keyListener)
             textGUI.addWindowAndWait(window)
         } finally {
+            // set flag, that alerts threads about stopping program
             isClosed = true
         }
     }
+
 
     private fun messageCheckerDaemon() {
         val chat = Chat()
@@ -139,7 +150,7 @@ class Main(vararg args: String) {
 
         Thread(Runnable {
             while (!isClosed) {
-                Thread.sleep(100)
+                Thread.sleep(300)
                 val newMessages = try{
                     api.getLastMessages(
                         userInChatId,
@@ -152,7 +163,7 @@ class Main(vararg args: String) {
                     throw InternetConnectionException()
                 }
 
-                // checking for messages count (empty or not) and window size and chat offset didn't changed
+                // checking messages count (empty or not) and window size, and chat offset didn't change
                 if (
                     newMessages.isEmpty() &&
                     oldOffset == chatOffset &&
@@ -172,6 +183,7 @@ class Main(vararg args: String) {
             }
         }).start()
     }
+
 
     private val keyListener = object : WindowListener {
         override fun onInput(basePane: Window?, keyStroke: KeyStroke?, deliverEvent: AtomicBoolean?) {

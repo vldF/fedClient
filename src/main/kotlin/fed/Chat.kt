@@ -4,23 +4,31 @@ import fed.api.Message
 import java.lang.Integer.max
 import kotlin.math.ceil
 
-
+/**
+ * This class stores text on user's screen and return part of it, that user need.
+ */
 class Chat {
     private val messages = mutableListOf<Message>()
 
     val size
         get() = messages.size
+
     val lastTime
         get() = messages.last().time
 
-    fun add(m: Message) = messages.add(m)
-
     fun addAll(m: List<Message>) = messages.addAll(m)
 
+    /**
+     * This function return's text, that could be shown on user's screen.
+     * @param width: chars on horizontal dim.
+     * @param height: chars on vertical dim.
+     * @param offset: lines, that user scroll.
+     */
     fun getText(width: Int, height: Int, offset: Int): String {
         var linesCount = 0
         val result = StringBuilder()
         val messagesIter = messages.listIterator(messages.size)
+
         while (messagesIter.hasPrevious() && linesCount < height + offset) {
             val message = messagesIter.previous()
             val messageText = "[${message.senderNick}]: ${message.message}\n"

@@ -6,7 +6,7 @@ import org.junit.Assert
 import org.junit.Test
 
 /**
- * Testing commandline params
+ * Testing command line params
  */
 class CommandlineParamsTest {
     @Test
