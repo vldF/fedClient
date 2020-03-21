@@ -46,19 +46,31 @@ class Main(vararg args: String) {
 
     private var isClosed = false
 
-    @Option(name = "--with", aliases = ["-w"], usage = withParameterDescriptor, required=true)
+    @Option(name = "--with", aliases = ["-w"], usage = withParameterDescriptor, required=true, metaVar = "userName")
     private var withParameter: String = ""
     private var userInChatId = -1
 
-    @Option(name="--user", aliases = ["-u"], usage = userParameterDescriptor)
+    @Option(name="--user", aliases = ["-u"], usage = userParameterDescriptor, metaVar = "userName")
     private var userName = ""
+
+    @Option(name="--server", aliases = ["-s"], usage = serverParameterDescription, required=true, metaVar = "server")
+    private var serverAddress = ""
+
+    @Option(name="--help", aliases = ["-h"])
+    private var help: Boolean = false
 
     init {
         val parser = CmdLineParser(this)
         try {
             parser.parseArgument(*args)
         } catch (e: CmdLineException) {
-            System.err.println("No argument passed:\n--with parameter is empty")
+            when {
+                help -> {
+                    parser.printUsage(System.err)
+                }
+                withParameter.isEmpty() -> System.err.println("--with parameter is empty")
+                serverAddress.isEmpty() -> System.err.println("--server parameter is empty")
+            }
             throw WrongArgumentException()
         }
 
@@ -79,7 +91,7 @@ class Main(vararg args: String) {
         } catch (_: FileNotFoundException) {
             // user set username, but account doesn't exist. Trying to register new account on the server
             val localApi = try {
-                 Api(userName, "")
+                 Api(userName, "", serverAddress)
             } catch (_: ConnectException) {
                 System.err.println("Please, check your internet connection")
                 throw InternetConnectionException()
@@ -102,7 +114,7 @@ class Main(vararg args: String) {
         nick = config[1]
 
         try {
-            api = Api(nick, token)
+            api = Api(nick, token, serverAddress)
         }catch (_: ConnectException) {
             System.err.println("Connection error. Please, check your internet connection")
             throw InternetConnectionException()
@@ -145,7 +157,7 @@ class Main(vararg args: String) {
         var oldMaxRows = maxRows
         val messagePanel = Panel()
 
-        api = Api(nick, token)
+        api = Api(nick, token, serverAddress)
         panel.addComponent(messagePanel)
 
         Thread(Runnable {
@@ -160,7 +172,7 @@ class Main(vararg args: String) {
                     )
                 } catch (_: ConnectException) {
                     System.err.println("Connection trouble")
-                    throw InternetConnectionException()
+                    exitProcess(1)
                 }
 
                 // checking messages count (empty or not) and window size, and chat offset didn't change

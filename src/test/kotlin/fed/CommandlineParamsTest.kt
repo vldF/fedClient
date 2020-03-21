@@ -6,12 +6,12 @@ import org.junit.Assert
 import org.junit.Test
 
 /**
- * Testing command line params
+ * Testing command line params.
  */
 class CommandlineParamsTest {
     @Test
     fun withParam() {
-        val args = arrayOf("--with", "vldf")
+        val args = arrayOf("--with", "vldf", "-s", "localhost")
         Assert.assertTrue(Main(*args).checkDataIsCorrect())
     }
 
@@ -22,6 +22,6 @@ class CommandlineParamsTest {
 
     @Test(expected = AccountErrorException::class)
     fun checkWrongUser() {
-        Main("--with", "user")
+        Main("--with", "user", "-s", "localhost")
     }
 }

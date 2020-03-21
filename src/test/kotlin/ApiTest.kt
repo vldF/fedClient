@@ -3,7 +3,7 @@ import org.junit.*
 import kotlin.random.Random
 
 /**
- * Base tests for checking API
+ * Base tests for checking API.
  */
 internal class ApiTest {
     private var userId = -1
@@ -28,7 +28,7 @@ internal class ApiTest {
     private fun register() {
         userName = generateToken()
 
-        val regApi = Api(userName, "")
+        val regApi = Api(userName, "", serverAddress = "localhost")
         val registerResp = regApi.register()
         Assert.assertTrue(registerResp.has("status"))
         Assert.assertTrue(registerResp.has("token"))
@@ -37,7 +37,7 @@ internal class ApiTest {
         userToken = registerResp["token"].asString
         Assert.assertTrue(userToken.isNotEmpty())
 
-        api = Api(userName, userToken)
+        api = Api(userName, userToken, serverAddress = "localhost")
         userId = api.userId
         Assert.assertTrue(userId != -1)
     }

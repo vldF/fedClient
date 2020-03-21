@@ -15,9 +15,10 @@ import java.util.concurrent.TimeUnit
  * @param nickname: username on server.
  * @param token: user's secret token. If token is empty, userId will not be got (use this variant for
  * registration new user).
+ * @param serverAddress: server address. If it doesn't contains port, default will be added (35309)
  */
-class Api(private val nickname: String, private val token: String) {
-    private val baseUrl = "http://localhost:35309/"
+class Api(private val nickname: String, private val token: String, private val serverAddress: String) {
+    private val baseUrl = "http://${if (serverAddress.contains(':')) serverAddress else "$serverAddress:35309"}/"
     private val client = OkHttpClient()
     var userId = -1
     private val messagesType = object: TypeToken<List<Message>>() {}.type
