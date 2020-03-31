@@ -14,7 +14,7 @@ internal class ApiTest {
 
     private val random by lazy { Random }
 
-    private fun generateToken(): String {
+    private fun generateRandomString(): String {
         return (1..32).map { (random.nextInt('A'.toInt(), 'Z'.toInt()).toChar()) }.joinToString(separator = "")
     }
 
@@ -26,7 +26,7 @@ internal class ApiTest {
 
 
     private fun register() {
-        userName = generateToken()
+        userName = generateRandomString()
 
         val regApi = Api(userName, "", serverAddress = "localhost")
         val registerResp = regApi.register()
@@ -45,7 +45,7 @@ internal class ApiTest {
     private fun messageSendAndGetLast() {
         val time = System.currentTimeMillis() - 10*1000 // 10*1000 = 10 sec. Inaccuracy due to time deviation
 
-        val rnd = generateToken()
+        val rnd = generateRandomString()
         message = "test$rnd"
         val respSend = api.messageSend(userId, message)
 

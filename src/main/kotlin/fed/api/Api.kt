@@ -20,20 +20,10 @@ import java.util.concurrent.TimeUnit
 class Api(private val nickname: String, private val token: String, private val serverAddress: String) {
     private val baseUrl = "http://${if (serverAddress.contains(':')) serverAddress else "$serverAddress:35309"}/"
     private val client = OkHttpClient()
-    var userId = -1
     private val messagesType = object: TypeToken<List<Message>>() {}.type
 
     init {
         client.setConnectTimeout(10L, TimeUnit.SECONDS)
-        if (token.isNotEmpty()) {
-            // if user have account (token was set), we get user's ID
-            val resp = execute(
-                "account.getOwnInfo", mapOf(
-                    "nick" to nickname
-                )
-            )
-            userId = resp["id"].asInt
-        }
     }
 
     /**
@@ -65,8 +55,7 @@ class Api(private val nickname: String, private val token: String, private val s
      */
     fun getLastMessages(fromId: Int, time: Long): List<Message> = Gson().fromJson(
         execute("messages.getLast", mapOf(
-            "userid" to userId,
-            "by" to fromId,
+            "receiver" to fromId,
             "last_time" to time
         ))["data"].asJsonArray, messagesType)
 
@@ -76,7 +65,6 @@ class Api(private val nickname: String, private val token: String, private val s
      * @param msg: message.
      */
     fun messageSend(toId: Int, msg: String): JsonObject = execute("messages.send", mapOf(
-            "sender" to userId,
             "receiver" to toId,
             "message" to msg,
             "token" to token
@@ -95,7 +83,6 @@ class Api(private val nickname: String, private val token: String, private val s
      * @param nick: user's nick, whose ID you would to get.
      */
     fun getUserId(nick: String): Int = execute("users.getUserId", mapOf(
-            "nick" to nick,
-            "userid" to userId
+            "nick" to nick
         ))["id"]?.asInt ?: throw AccountErrorException()
 }

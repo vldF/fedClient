@@ -9,6 +9,7 @@ import com.googlecode.lanterna.screen.TerminalScreen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.terminal.Terminal
 import fed.api.Api
+import fed.api.Message
 import fed.exceptions.AccountErrorException
 import fed.exceptions.ChatBaseException
 import fed.exceptions.InternetConnectionException
@@ -34,13 +35,13 @@ class Main(vararg args: String) {
     private val screen = TerminalScreen(terminal)
     private val window = BasicWindow()
     private val panel = Panel(LinearLayout(Direction.VERTICAL))
+    private val messagePanel = Panel()
     private lateinit var input: TextBox
 
     private var maxColumns = terminal.terminalSize.columns
     private var maxRows = terminal.terminalSize.rows
-    private var chatOffset = 0
+    private val minLinesOnChat = 10 // if in chat windows less, than it lines, chat can't scroll down
     private var api: Api
-    private var lastAddedChatTextLen = 0
     private var nick: String
     private var token: String
 
@@ -58,6 +59,34 @@ class Main(vararg args: String) {
 
     @Option(name="--help", aliases = ["-h"])
     private var help: Boolean = false
+
+    private val chatEventsListener = object : ChatListener {
+        private val chat = Chat()
+        private var chatOffset = 0
+        private var lastAddedChatTextLen = 0
+
+        override fun onMessages(messages: Collection<Message>) {
+            chat.addAll(messages)
+            redrawChat()
+        }
+
+        override fun onScroll(lines: Int) {
+            if (-lines + lastAddedChatTextLen > minLinesOnChat && chatOffset + lines >= 0)
+                chatOffset += lines
+            else
+                return
+
+            redrawChat()
+        }
+
+        private fun redrawChat() {
+            val chatText = chat.getText(maxColumns, maxRows, chatOffset - 1)
+            lastAddedChatTextLen = chatText.lines().size
+            messagePanel.removeAllComponents()
+            messagePanel.addComponent(Label(chatText))
+        }
+
+    }
 
     init {
         val parser = CmdLineParser(this)
@@ -133,12 +162,14 @@ class Main(vararg args: String) {
             input = TextBox(TerminalSize(screen.terminalSize.columns, 1))
 
             panel.addComponent(input)
+            panel.addComponent(messagePanel)
 
             val textGUI = MultiWindowTextGUI(screen)
             input.takeFocus()
 
-            // starting background thread, that will check messages for new
-            messageCheckerDaemon()
+            // starting background thread, that will check messages for updates and attaching listener
+            messageCheckerDaemon(chatEventsListener)
+            keyListener.setChatListener(chatEventsListener)
 
             window.addWindowListener(keyListener)
             textGUI.addWindowAndWait(window)
@@ -149,16 +180,9 @@ class Main(vararg args: String) {
     }
 
 
-    private fun messageCheckerDaemon() {
-        val chat = Chat()
-        var chatText: String
-        var oldOffset = chatOffset
-        var oldMaxColumns = maxColumns
-        var oldMaxRows = maxRows
-        val messagePanel = Panel()
-
-        api = Api(nick, token, serverAddress)
-        panel.addComponent(messagePanel)
+    private fun messageCheckerDaemon(chatListener: ChatListener) {
+        api = Api(nick, token, serverAddress)  // todo
+        var lastTime = 0L
 
         Thread(Runnable {
             while (!isClosed) {
@@ -166,9 +190,7 @@ class Main(vararg args: String) {
                 val newMessages = try{
                     api.getLastMessages(
                         userInChatId,
-                        if (chat.size != 0)
-                            chat.lastTime
-                        else 0
+                        lastTime
                     )
                 } catch (_: ConnectException) {
                     System.err.println("Connection trouble")
@@ -176,28 +198,18 @@ class Main(vararg args: String) {
                 }
 
                 // checking messages count (empty or not) and window size, and chat offset didn't change
-                if (
-                    newMessages.isEmpty() &&
-                    oldOffset == chatOffset &&
-                    oldMaxColumns == maxColumns &&
-                    oldMaxRows == oldMaxRows
-                ) continue
+                if (newMessages.isEmpty()) continue
 
-                oldOffset = chatOffset
-                oldMaxColumns = maxColumns
-                oldMaxRows = maxRows
-
-                chat.addAll(newMessages)
-                chatText = chat.getText(maxColumns, maxRows, chatOffset - 1)
-                lastAddedChatTextLen = chatText.lines().size
-                messagePanel.removeAllComponents()
-                messagePanel.addComponent(Label(chatText))
+                lastTime = newMessages.last().time
+                chatListener.onMessages(newMessages)
             }
         }).start()
     }
 
 
     private val keyListener = object : WindowListener {
+        private lateinit var chatListener: ChatListener
+
         override fun onInput(basePane: Window?, keyStroke: KeyStroke?, deliverEvent: AtomicBoolean?) {
             when (keyStroke?.keyType ?: return) {
                 KeyType.Enter -> {
@@ -209,11 +221,8 @@ class Main(vararg args: String) {
                     }
                     input.text = ""
                 }
-                KeyType.ArrowUp -> if (chatOffset > 0) chatOffset--
-                KeyType.ArrowDown -> {
-                    if (lastAddedChatTextLen > 10)
-                        chatOffset++
-                }
+                KeyType.ArrowUp -> chatListener.onScroll(-1)
+                KeyType.ArrowDown -> chatListener.onScroll(1)
                 else -> {
                 }
             }
@@ -230,6 +239,8 @@ class Main(vararg args: String) {
         override fun onUnhandledInput(basePane: Window?, keyStroke: KeyStroke?, hasBeenHandled: AtomicBoolean?) {
             return
         }
+
+        fun setChatListener(chatListener: ChatListener) { this.chatListener = chatListener }
     }
 
     // this method used in tests

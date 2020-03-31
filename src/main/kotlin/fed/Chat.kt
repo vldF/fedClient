@@ -16,7 +16,7 @@ class Chat {
     val lastTime
         get() = messages.last().time
 
-    fun addAll(m: List<Message>) = messages.addAll(m)
+    fun addAll(m: Collection<Message>) = messages.addAll(m)
 
     /**
      * This function return's text, that could be shown on user's screen.
