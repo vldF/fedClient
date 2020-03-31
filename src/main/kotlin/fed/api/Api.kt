@@ -7,7 +7,11 @@ import com.google.gson.reflect.TypeToken
 import com.squareup.okhttp.OkHttpClient
 import com.squareup.okhttp.Request
 import fed.exceptions.AccountErrorException
+import fed.exceptions.InternetConnectionException
+import java.io.File
+import java.io.FileNotFoundException
 import java.lang.Exception
+import java.net.ConnectException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -17,13 +21,38 @@ import java.util.concurrent.TimeUnit
  * registration new user).
  * @param serverAddress: server address. If it doesn't contains port, default will be added (35309)
  */
-class Api(private val nickname: String, private val token: String, private val serverAddress: String) {
+class Api(private val nickname: String, private val serverAddress: String) {
     private val baseUrl = "http://${if (serverAddress.contains(':')) serverAddress else "$serverAddress:35309"}/"
     private val client = OkHttpClient()
     private val messagesType = object: TypeToken<List<Message>>() {}.type
 
+    private val token: String
+
     init {
         client.setConnectTimeout(10L, TimeUnit.SECONDS)
+        val sep = File.separator
+        val config: List<String> =
+            try {
+                val configFile = File("users$sep$nickname")
+                configFile.readLines()
+            } catch (_: FileNotFoundException) {
+                // user set username, but account doesn't exist. Trying to register new account on the server
+                val resp = this.register()
+
+                if (resp["status"].asString == "error") {
+                    System.err.println("Error. ${resp["description"]}")
+                    throw AccountErrorException()
+                } else {
+                    val token = resp["token"].asString
+                    File("users$sep$nickname").createNewFile()
+                    val configFile = File("users$sep$nickname")
+                    configFile.writeText("$token\n$nickname")
+
+                    configFile.readLines()
+                }
+            }
+
+        token = config[0]
     }
 
     /**

@@ -18,7 +18,6 @@ import org.kohsuke.args4j.CmdLineException
 import org.kohsuke.args4j.CmdLineParser
 import org.kohsuke.args4j.Option
 import java.io.File
-import java.io.FileNotFoundException
 import java.net.ConnectException
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
@@ -30,7 +29,6 @@ import kotlin.system.exitProcess
  */
 class Main(vararg args: String) {
     private val terminal: Terminal = DefaultTerminalFactory(System.out, System.`in`, Charset.forName("UTF-8"))
-        //.setForceTextTerminal(true)
         .createTerminal()
     private val screen = TerminalScreen(terminal)
     private val window = BasicWindow()
@@ -42,8 +40,6 @@ class Main(vararg args: String) {
     private var maxRows = terminal.terminalSize.rows
     private val minLinesOnChat = 10 // if in chat windows less, than it lines, chat can't scroll down
     private var api: Api
-    private var nick: String
-    private var token: String
 
     private var isClosed = false
 
@@ -113,37 +109,8 @@ class Main(vararg args: String) {
             }
         }
 
-        val config: List<String> =
         try {
-            val configFile = File("users/$userName")
-            configFile.readLines()
-        } catch (_: FileNotFoundException) {
-            // user set username, but account doesn't exist. Trying to register new account on the server
-            val localApi = try {
-                 Api(userName, "", serverAddress)
-            } catch (_: ConnectException) {
-                System.err.println("Please, check your internet connection")
-                throw InternetConnectionException()
-            }
-            val resp = localApi.register()
-            if (resp["status"].asString == "error") {
-                System.err.println("Error. This username already exist")
-                throw AccountErrorException()
-            } else {
-                val token = resp["token"].asString
-                File("users/$userName").createNewFile()
-                val configFile = File("users/$userName")
-                configFile.writeText("$token\n$userName")
-
-                configFile.readLines()
-            }
-        }
-
-        token = config[0]
-        nick = config[1]
-
-        try {
-            api = Api(nick, token, serverAddress)
+            api = Api(userName, serverAddress)
         }catch (_: ConnectException) {
             System.err.println("Connection error. Please, check your internet connection")
             throw InternetConnectionException()
@@ -181,7 +148,6 @@ class Main(vararg args: String) {
 
 
     private fun messageCheckerDaemon(chatListener: ChatListener) {
-        api = Api(nick, token, serverAddress)  // todo
         var lastTime = 0L
 
         Thread(Runnable {
@@ -244,7 +210,7 @@ class Main(vararg args: String) {
     }
 
     // this method used in tests
-    internal fun checkDataIsCorrect(): Boolean = nick.isNotEmpty() && token.isNotEmpty() && userInChatId != -1
+    internal fun checkDataIsCorrect(): Boolean = userName.isNotEmpty() && userName.isNotEmpty() && userInChatId != -1
 }
 
 
