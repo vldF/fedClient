@@ -23,5 +23,5 @@ Simple terminal client for [this server](https://github.com/vldF/fedServer).
                         --with xXx_name_xXx
  --help (-h)          : Show this help
 ```
-
+DO NOT FORGET CREATE user DIR!
 Task #2 for Peter the Great Polytechnic University, St. Petersburg
