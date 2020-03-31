@@ -7,12 +7,12 @@ import com.google.gson.reflect.TypeToken
 import com.squareup.okhttp.OkHttpClient
 import com.squareup.okhttp.Request
 import fed.exceptions.AccountErrorException
-import fed.exceptions.InternetConnectionException
+import fed.newLine
 import java.io.File
 import java.io.FileNotFoundException
-import java.lang.Exception
-import java.net.ConnectException
 import java.util.concurrent.TimeUnit
+import java.util.logging.FileHandler
+import java.util.logging.Logger
 
 /**
  * Api for server
@@ -26,9 +26,15 @@ class Api(private val nickname: String, private val serverAddress: String) {
     private val client = OkHttpClient()
     private val messagesType = object: TypeToken<List<Message>>() {}.type
 
+    private val log = Logger.getLogger("api")
+
     private val token: String
 
     init {
+        val handler = FileHandler("api.log", true)
+        log.handlers.forEach { log.removeHandler(it) }
+        log.addHandler(handler)
+
         client.setConnectTimeout(10L, TimeUnit.SECONDS)
         val sep = File.separator
         val config: List<String> =
@@ -46,7 +52,7 @@ class Api(private val nickname: String, private val serverAddress: String) {
                     val token = resp["token"].asString
                     File("users$sep$nickname").createNewFile()
                     val configFile = File("users$sep$nickname")
-                    configFile.writeText("$token\n$nickname")
+                    configFile.writeText("$token$newLine$nickname")
 
                     configFile.readLines()
                 }
@@ -71,8 +77,8 @@ class Api(private val nickname: String, private val serverAddress: String) {
             return JsonParser.parseString(resp).asJsonObject
         } catch (e: Exception) {
             // message for debugging. It will shown only if program run in emulation mode
-            println(resp)
-            println("$baseUrl$method?$paramsString&token=$token")
+            log.severe(resp)
+            log.severe("$baseUrl$method?$paramsString&token=$token")
             throw e
         }
     }

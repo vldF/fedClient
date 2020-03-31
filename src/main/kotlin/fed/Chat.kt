@@ -31,7 +31,7 @@ class Chat {
 
         while (messagesIter.hasPrevious() && linesCount < height + offset) {
             val message = messagesIter.previous()
-            val messageText = "[${message.senderNick}]: ${message.message}\n"
+            val messageText = "[${message.senderNick}]: ${message.message}$newLine"
             val currentMessageHeight = max(1, ceil(messageText.length * 1.0 / width).toInt())
 
             if (linesCount > offset && linesCount + currentMessageHeight <= height + offset) {

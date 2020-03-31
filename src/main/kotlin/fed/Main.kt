@@ -21,6 +21,9 @@ import java.io.File
 import java.net.ConnectException
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.logging.FileHandler
+import java.util.logging.Logger
+import java.util.logging.SimpleFormatter
 import kotlin.system.exitProcess
 
 /**
@@ -41,16 +44,18 @@ class Main(vararg args: String) {
     private val minLinesOnChat = 10 // if in chat windows less, than it lines, chat can't scroll down
     private var api: Api
 
+    private val log = Logger.getLogger("main")
+
     private var isClosed = false
 
-    @Option(name = "--with", aliases = ["-w"], usage = withParameterDescriptor, required=true, metaVar = "userName")
+    @Option(name = "--with", aliases = ["-w"], usage = withParameterDescriptor, required=true, metaVar = "user_name")
     private var withParameter: String = ""
     private var userInChatId = -1
 
-    @Option(name="--user", aliases = ["-u"], usage = userParameterDescriptor, metaVar = "userName")
+    @Option(name="--user", aliases = ["-u"], usage = userParameterDescriptor, metaVar = "user_name")
     private var userName = ""
 
-    @Option(name="--server", aliases = ["-s"], usage = serverParameterDescription, required=true, metaVar = "server")
+    @Option(name="--server", aliases = ["-s"], usage = serverParameterDescription, required=true, metaVar = "server_ip")
     private var serverAddress = ""
 
     @Option(name="--help", aliases = ["-h"])
@@ -85,6 +90,11 @@ class Main(vararg args: String) {
     }
 
     init {
+        val handler = FileHandler("chat.log", true)
+        handler.formatter = SimpleFormatter()
+        log.handlers.forEach { log.removeHandler(it) }
+        log.addHandler(handler)
+
         val parser = CmdLineParser(this)
         try {
             parser.parseArgument(*args)
@@ -111,8 +121,9 @@ class Main(vararg args: String) {
 
         try {
             api = Api(userName, serverAddress)
-        }catch (_: ConnectException) {
-            System.err.println("Connection error. Please, check your internet connection")
+        }catch (e: ConnectException) {
+            log.severe(e.toString())
+            System.err.println(connectionTrouble)
             throw InternetConnectionException()
         }
         userInChatId = api.getUserId(withParameter)
@@ -158,8 +169,9 @@ class Main(vararg args: String) {
                         userInChatId,
                         lastTime
                     )
-                } catch (_: ConnectException) {
-                    System.err.println("Connection trouble")
+                } catch (e: ConnectException) {
+                    log.severe(e.toString())
+                    System.err.println(connectionTrouble)
                     exitProcess(1)
                 }
 
@@ -180,9 +192,12 @@ class Main(vararg args: String) {
             when (keyStroke?.keyType ?: return) {
                 KeyType.Enter -> {
                     try {
+                        if (input.text == "/exit")
+                            exitProcess(0)
                         api.messageSend(userInChatId, input.text)
-                    } catch (_: ConnectException) {
-                        System.err.println("Error on sending message")
+                    } catch (e: ConnectException) {
+                        log.severe(e.toString())
+                        System.err.println(connectionTrouble)
                         throw InternetConnectionException()
                     }
                     input.text = ""
@@ -217,7 +232,7 @@ class Main(vararg args: String) {
 fun main(args: Array<out String>) {
     try{
         Main(*args).main()
-    } catch (_: ChatBaseException) {
+    } catch (e: ChatBaseException) {
         exitProcess(1)
     }
 }
