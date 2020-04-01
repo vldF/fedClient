@@ -13,7 +13,7 @@ class Chat {
     fun addAll(m: Collection<Message>) = messages.addAll(m)
 
     /**
-     * This function return's text, that could be shown on user's screen.
+     * This function return's text, that could will be shown on user's screen.
      * @param width: chars on horizontal dim.
      * @param height: chars on vertical dim.
      * @param offset: lines, that user scroll.

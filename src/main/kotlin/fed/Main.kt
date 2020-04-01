@@ -42,7 +42,7 @@ class Main(vararg args: String) {
 
     private var maxColumns = terminal.terminalSize.columns
     private var maxRows = terminal.terminalSize.rows
-    private val minLinesOnChat = 10 // if in chat windows less, than it lines, chat can't scroll down
+    private val minLinesOnChat = 10 // if lines in chat window less, than it, chat can't scroll down
     private var api: Api
 
     private val log = Logger.getLogger("main")
