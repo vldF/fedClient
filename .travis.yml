@@ -1,0 +1,15 @@
+language: java
+install: true
+
+os: linux
+dist: trusty
+jdk: oraclejdk8
+
+script:
+  - chmod 777 ./gradlew
+  - ./gradlew fatJar
+deploy:
+  provider: releases
+  api_key: ${GH_TOKEN}
+  file: "./build/libs/client-1.0-SNAPSHOT.jar"
+  skip_cleanup: true
