@@ -10,12 +10,6 @@ import kotlin.math.ceil
 class Chat {
     private val messages = mutableListOf<Message>()
 
-    val size
-        get() = messages.size
-
-    val lastTime
-        get() = messages.last().time
-
     fun addAll(m: Collection<Message>) = messages.addAll(m)
 
     /**
