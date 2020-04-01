@@ -8,17 +8,18 @@ import com.squareup.okhttp.OkHttpClient
 import com.squareup.okhttp.Request
 import fed.exceptions.AccountErrorException
 import fed.newLine
+import fed.slash
 import java.io.File
 import java.io.FileNotFoundException
 import java.util.concurrent.TimeUnit
 import java.util.logging.FileHandler
+import java.util.logging.LogManager
 import java.util.logging.Logger
+import java.util.logging.SimpleFormatter
 
 /**
  * Api for server
  * @param nickname: username on server.
- * @param token: user's secret token. If token is empty, userId will not be got (use this variant for
- * registration new user).
  * @param serverAddress: server address. If it doesn't contains port, default will be added (35309)
  */
 class Api(private val nickname: String, private val serverAddress: String) {
@@ -32,6 +33,7 @@ class Api(private val nickname: String, private val serverAddress: String) {
 
     init {
         val handler = FileHandler("api.log", true)
+        handler.formatter = SimpleFormatter()
         log.handlers.forEach { log.removeHandler(it) }
         log.addHandler(handler)
 
@@ -45,7 +47,7 @@ class Api(private val nickname: String, private val serverAddress: String) {
                 // user set username, but account doesn't exist. Trying to register new account on the server
                 val resp = this.register()
 
-                if (resp["status"].asString == "error") {
+                if (resp.has("error") && resp["error"].asBoolean || !resp.has("token")) {
                     System.err.println("Error. ${resp["description"]}")
                     throw AccountErrorException()
                 } else {
@@ -88,11 +90,16 @@ class Api(private val nickname: String, private val serverAddress: String) {
      * @param fromId: second user ID.
      * @param time: UNIX time. Set this param to 0, if you would to get all messages.
      */
-    fun getLastMessages(fromId: Int, time: Long): List<Message> = Gson().fromJson(
-        execute("messages.getLast", mapOf(
-            "receiver" to fromId,
-            "last_time" to time
-        ))["data"].asJsonArray, messagesType)
+    fun getLastMessages(fromId: Int, time: Long): List<Message> {
+        val resp = execute("messages.getLast", mapOf(
+                    "receiver" to fromId,
+                    "last_time" to time
+                ))
+
+        if (resp.has("error"))
+            throw AccountErrorException()
+        return Gson().fromJson(resp["data"].asJsonArray, messagesType)
+    }
 
     /**
      * Sent new message.
@@ -109,7 +116,7 @@ class Api(private val nickname: String, private val serverAddress: String) {
      * Register new account.
      * If this account exist on the server, error will return. Else new secret token will return.
      */
-    fun register(): JsonObject = execute("account.register", mapOf(
+    private fun register(): JsonObject = execute("account.register", mapOf(
             "nick" to nickname
         ))
 

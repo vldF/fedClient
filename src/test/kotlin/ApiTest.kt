@@ -1,5 +1,6 @@
 import fed.api.Api
 import org.junit.*
+import java.util.logging.LogManager
 import kotlin.random.Random
 
 /**
@@ -8,15 +9,8 @@ import kotlin.random.Random
 internal class ApiTest {
     private var userId = -1
     private lateinit var userName: String
-    private lateinit var userToken: String
     private lateinit var message: String
     private lateinit var api: Api
-
-    private val random by lazy { Random }
-
-    private fun generateRandomString(): String {
-        return (1..32).map { (random.nextInt('A'.toInt(), 'Z'.toInt()).toChar()) }.joinToString(separator = "")
-    }
 
     @Test
     fun testAll() {
@@ -24,22 +18,9 @@ internal class ApiTest {
         messageSendAndGetLast()
     }
 
-
     private fun register() {
         userName = generateRandomString()
-
-        val regApi = Api(userName, "", serverAddress = "localhost")
-        val registerResp = regApi.register()
-        Assert.assertTrue(registerResp.has("status"))
-        Assert.assertTrue(registerResp.has("token"))
-        Assert.assertEquals("ok", registerResp["status"].asString)
-
-        userToken = registerResp["token"].asString
-        Assert.assertTrue(userToken.isNotEmpty())
-
-        api = Api(userName, userToken, serverAddress = "localhost")
-        userId = api.userId
-        Assert.assertTrue(userId != -1)
+        api = Api(userName, serverAddress = server)
     }
 
     private fun messageSendAndGetLast() {
@@ -55,5 +36,10 @@ internal class ApiTest {
 
         Assert.assertTrue(lastMessages.isNotEmpty())
         Assert.assertEquals(message, lastMessages.last().message)
+    }
+
+    @After
+    fun closeLogs() {
+        LogManager.getLogManager().reset()
     }
 }

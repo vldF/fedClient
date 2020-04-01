@@ -22,6 +22,7 @@ import java.net.ConnectException
 import java.nio.charset.Charset
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.logging.FileHandler
+import java.util.logging.LogManager
 import java.util.logging.Logger
 import java.util.logging.SimpleFormatter
 import kotlin.system.exitProcess
@@ -234,5 +235,7 @@ fun main(args: Array<out String>) {
         Main(*args).main()
     } catch (e: ChatBaseException) {
         exitProcess(1)
+    } finally {
+        LogManager.getLogManager().reset()
     }
 }

@@ -1,6 +1,9 @@
 package fed
 
+import java.io.File
+
 val newLine: String = System.lineSeparator()
+val slash: String = File.separator
 
 const val withParameterDescriptor = "Open chat with user"
 
