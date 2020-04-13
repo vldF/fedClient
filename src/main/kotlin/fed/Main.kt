@@ -8,15 +8,15 @@ import com.googlecode.lanterna.input.KeyType
 import com.googlecode.lanterna.screen.TerminalScreen
 import com.googlecode.lanterna.terminal.DefaultTerminalFactory
 import com.googlecode.lanterna.terminal.Terminal
-import fed.api.Api
-import fed.api.Message
-import fed.exceptions.AccountErrorException
-import fed.exceptions.ChatBaseException
-import fed.exceptions.InternetConnectionException
-import fed.exceptions.WrongArgumentException
+import ru.vldf.fed.Api
+import ru.vldf.fed.Message
 import org.kohsuke.args4j.CmdLineException
 import org.kohsuke.args4j.CmdLineParser
 import org.kohsuke.args4j.Option
+import ru.vldf.fed.exceptions.AccountErrorException
+import ru.vldf.fed.exceptions.ChatBaseException
+import ru.vldf.fed.exceptions.InternetConnectionException
+import ru.vldf.fed.exceptions.WrongArgumentException
 import java.io.File
 import java.net.ConnectException
 import java.nio.charset.Charset
@@ -87,7 +87,6 @@ class Main(vararg args: String) {
             messagePanel.removeAllComponents()
             messagePanel.addComponent(Label(chatText))
         }
-
     }
 
     init {

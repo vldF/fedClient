@@ -3,7 +3,6 @@ package fed
 import java.io.File
 
 val newLine: String = System.lineSeparator()
-val fileSeparator: String = File.separator
 
 const val WITH_DESCRIPTION = "Open chat with user"
 

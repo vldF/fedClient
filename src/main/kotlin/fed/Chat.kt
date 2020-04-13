@@ -1,6 +1,6 @@
 package fed
 
-import fed.api.Message
+import ru.vldf.fed.Message
 import java.lang.Integer.max
 import kotlin.math.ceil
 

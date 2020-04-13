@@ -1,4 +1,4 @@
-import fed.api.Api
+import ru.vldf.fed.Api
 import org.junit.Assert
 import org.junit.Test
 
