@@ -1,9 +1,9 @@
 package fed
 
-import fed.exceptions.AccountErrorException
-import fed.exceptions.WrongArgumentException
 import org.junit.Assert
 import org.junit.Test
+import ru.vldf.fed.exceptions.AccountErrorException
+import ru.vldf.fed.exceptions.WrongArgumentException
 import server
 
 /**

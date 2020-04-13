@@ -3,6 +3,7 @@ import org.junit.AfterClass
 import org.junit.Assert
 import org.junit.BeforeClass
 import org.junit.Test
+import ru.vldf.fed.exceptions.AccountErrorException
 import java.io.File
 
 internal class UserFileTest {
@@ -22,6 +23,11 @@ internal class UserFileTest {
     @Test
     fun checkFileExist() {
         Assert.assertTrue(File("./users/$userName").isFile)
+    }
+
+    @Test(expected = AccountErrorException::class)
+    fun registerWithUsedNick() {
+        Api("vldf2", server)
     }
 
     @Test
