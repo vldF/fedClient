@@ -7,13 +7,11 @@ import com.google.gson.reflect.TypeToken
 import com.squareup.okhttp.OkHttpClient
 import com.squareup.okhttp.Request
 import fed.exceptions.AccountErrorException
+import fed.fileSeparator
 import fed.newLine
-import fed.slash
 import java.io.File
-import java.io.FileNotFoundException
 import java.util.concurrent.TimeUnit
 import java.util.logging.FileHandler
-import java.util.logging.LogManager
 import java.util.logging.Logger
 import java.util.logging.SimpleFormatter
 
@@ -38,28 +36,13 @@ class Api(private val nickname: String, private val serverAddress: String) {
         log.addHandler(handler)
 
         client.setConnectTimeout(10L, TimeUnit.SECONDS)
-        val sep = File.separator
-        val config: List<String> =
-            try {
-                val configFile = File("users$sep$nickname")
-                configFile.readLines()
-            } catch (_: FileNotFoundException) {
-                // user set username, but account doesn't exist. Trying to register new account on the server
-                val resp = this.register()
+        val configFile = File("users$fileSeparator$nickname")
+        if (!configFile.exists()) {
+            // account doesn't exist. Trying to create new
+            register()
+        }
 
-                if (resp.has("error") && resp["error"].asBoolean || !resp.has("token")) {
-                    System.err.println("Error. ${resp["description"]}")
-                    throw AccountErrorException()
-                } else {
-                    val token = resp["token"].asString
-                    File("users$sep$nickname").createNewFile()
-                    val configFile = File("users$sep$nickname")
-                    configFile.writeText("$token$newLine$nickname")
-
-                    configFile.readLines()
-                }
-            }
-
+        val config = configFile.readLines()
         token = config[0]
     }
 
@@ -116,9 +99,23 @@ class Api(private val nickname: String, private val serverAddress: String) {
      * Register new account.
      * If this account exist on the server, error will return. Else new secret token will return.
      */
-    private fun register(): JsonObject = execute("account.register", mapOf(
+    private fun register() {
+        val resp = execute("account.register", mapOf(
             "nick" to nickname
         ))
+
+        if (resp.has("error") && resp["error"].asBoolean || !resp.has("token")) {
+            System.err.println("Error. ${resp["description"]}")
+            throw AccountErrorException()
+        } else {
+            val token = resp["token"].asString
+            File("users$fileSeparator$nickname").createNewFile()
+            val configFile = File("users$fileSeparator$nickname")
+            configFile.writeText("$token$newLine$nickname")
+
+            configFile.readLines()
+        }
+    }
 
     /**
      * Get user's ID.

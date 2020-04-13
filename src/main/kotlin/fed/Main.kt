@@ -49,14 +49,14 @@ class Main(vararg args: String) {
 
     private var isClosed = false
 
-    @Option(name = "--with", aliases = ["-w"], usage = withParameterDescriptor, required=true, metaVar = "user_name")
+    @Option(name = "--with", aliases = ["-w"], usage = WITH_DESCRIPTION, required=true, metaVar = "user_name")
     private var withParameter: String = ""
     private var userInChatId = -1
 
-    @Option(name="--user", aliases = ["-u"], usage = userParameterDescriptor, metaVar = "user_name")
+    @Option(name="--user", aliases = ["-u"], usage = USER_DESCRIPTION, metaVar = "user_name")
     private var userName = ""
 
-    @Option(name="--server", aliases = ["-s"], usage = serverParameterDescription, required=true, metaVar = "server_ip")
+    @Option(name="--server", aliases = ["-s"], usage = SERVER_DESCRIPTION, required=true, metaVar = "server_ip")
     private var serverAddress = ""
 
     @Option(name="--help", aliases = ["-h"])
@@ -122,10 +122,14 @@ class Main(vararg args: String) {
 
         try {
             api = Api(userName, serverAddress)
-        }catch (e: ConnectException) {
+        } catch (e: ConnectException) {
             log.severe(e.toString())
-            System.err.println(connectionTrouble)
+            System.err.println(CONNECTION_TROUBLE_MESSAGE)
             throw InternetConnectionException()
+        } catch (e: Exception) {
+            log.severe(e.toString())
+            System.err.println("Unknown error. Check logs for more details")
+            throw e
         }
         userInChatId = api.getUserId(withParameter)
     }
@@ -172,7 +176,7 @@ class Main(vararg args: String) {
                     )
                 } catch (e: ConnectException) {
                     log.severe(e.toString())
-                    System.err.println(connectionTrouble)
+                    System.err.println(CONNECTION_TROUBLE_MESSAGE)
                     exitProcess(1)
                 }
 
@@ -198,7 +202,7 @@ class Main(vararg args: String) {
                         api.messageSend(userInChatId, input.text)
                     } catch (e: ConnectException) {
                         log.severe(e.toString())
-                        System.err.println(connectionTrouble)
+                        System.err.println(CONNECTION_TROUBLE_MESSAGE)
                         throw InternetConnectionException()
                     }
                     input.text = ""
